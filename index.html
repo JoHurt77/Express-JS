@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestión de Alumnos</title>
+    <style>
+      /* Estilos CSS */
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      .edit-mode input {
+        border: 1px solid #000;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Gestión de Alumnos</h1>
+
+    <!-- Botones para cada opción -->
+    <button onclick="mostrarFormulario()">Insertar/Actualizar Alumno</button>
+    <button onclick="mostrarDatos()">Mostrar Datos en Tabla</button>
+
+    <!-- Formulario para insertar o actualizar datos -->
+    <div id="formulario" style="display: none">
+      <h2>Insertar/Actualizar Alumno</h2>
+      <form id="alumnoForm">
+        Nombre: <input type="text" id="nombre" name="nombre" /><br />
+        Apellidos: <input type="text" id="apellidos" name="apellidos" /><br />
+        DNI: <input type="text" id="dni" name="dni" /><br />
+        Teléfono: <input type="text" id="telefono" name="telefono" /><br />
+        <button type="submit" id="submitBtn">Insertar/Actualizar</button>
+      </form>
+    </div>
+
+    <!-- Tabla para mostrar datos -->
+    <h2>Alumnos</h2>
+    <table id="alumnosTable">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Apellidos</th>
+          <th>DNI</th>
+          <th>Teléfono</th>
+          <th>Operaciones</th>
+        </tr>
+      </thead>
+      <tbody id="alumnosBody">
+        <!-- Aquí se mostrarán los datos dinámicamente -->
+      </tbody>
+    </table>
+
+    <!-- Script para manejar las solicitudes al servidor -->
+    <script>
+      // Función para mostrar formulario de insertar/actualizar
+      function mostrarFormulario() {
+        document.getElementById("formulario").style.display = "block";
+      }
+
+      // Función para mostrar datos en la tabla
+      function mostrarDatos() {
+        fetch("http://localhost:3000/alumnos")
+          .then((response) => response.json())
+          .then((data) => {
+            const alumnosBody = document.getElementById("alumnosBody");
+            alumnosBody.innerHTML = "";
+            data.forEach((alumno) => {
+              const row = document.createElement("tr");
+              row.innerHTML = `
+              <td>${alumno.nombre}</td>
+              <td>${alumno.apellidos}</td>
+              <td>${alumno.dni}</td>
+              <td>${alumno.telefono}</td>
+              <td>
+                <button onclick="editarAlumno(this)">Editar</button>
+                <button onclick="eliminarAlumno('${alumno.dni}')">Eliminar</button>
+              </td>
+            `;
+              alumnosBody.appendChild(row);
+            });
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      // Función para enviar el formulario de inserción/actualización
+      document
+        .getElementById("alumnoForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          const formData = new FormData(this);
+          const alumno = {
+            nombre: formData.get("nombre"),
+            apellidos: formData.get("apellidos"),
+            dni: formData.get("dni"),
+            telefono: formData.get("telefono"),
+          };
+          fetch("http://localhost:3000/alumnos", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(alumno),
+          })
+            .then((response) => response.text())
+            .then((message) => {
+              alert(message);
+              mostrarDatos(); // Actualizar la tabla después de la inserción/actualización
+            })
+            .catch((error) => console.error("Error:", error));
+        });
+
+      // Función para editar un alumno
+      function editarAlumno(btn) {
+        const row = btn.parentNode.parentNode;
+        const cells = row.getElementsByTagName("td");
+        for (let i = 0; i < cells.length - 1; i++) {
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = cells[i].innerText;
+          cells[i].innerHTML = "";
+          cells[i].appendChild(input);
+        }
+        btn.innerHTML = "Actualizar";
+        btn.setAttribute("onclick", "actualizarAlumno(this)");
+        row.classList.add("edit-mode");
+      }
+
+      // Función para actualizar un alumno
+      function actualizarAlumno(btn) {
+        const row = btn.parentNode.parentNode;
+        const cells = row.getElementsByTagName("td");
+        const updatedAlumno = {
+          nombre: cells[0].querySelector("input").value,
+          apellidos: cells[1].querySelector("input").value,
+          dni: cells[2].querySelector("input").value,
+          telefono: cells[3].querySelector("input").value,
+        };
+        // Aquí puedes realizar la solicitud de actualización al servidor con los datos actualizados
+        // Luego, puedes cambiar los campos a texto sin editar y restaurar el botón
+        for (let i = 0; i < cells.length - 1; i++) {
+          cells[i].innerHTML = cells[i].querySelector("input").value;
+        }
+        btn.innerHTML = "Editar";
+        btn.setAttribute("onclick", "editarAlumno(this)");
+        row.classList.remove("edit-mode");
+      }
+
+      // Función para eliminar un alumno
+      function eliminarAlumno(dni) {
+        fetch(`http://localhost:3000/alumnos/${dni}`, {
+          method: "DELETE",
+        })
+          .then((response) => response.text())
+          .then((message) => {
+            alert(message);
+            mostrarDatos(); // Actualizar la tabla después de eliminar
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+    </script>
+  </body>
+</html>
